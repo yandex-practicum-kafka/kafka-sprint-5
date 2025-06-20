@@ -6,7 +6,7 @@
 
 ## Описание всех сервисов (конфигурация)
 
-Приложение разворачивается посредтством запуска Docker Compose сервисов на основе описания в [docker-compose.yml](docker-compose.yml):
+Приложение разворачивается посредством запуска Docker Compose сервисов на основе описания в [docker-compose.yml](docker-compose.yml):
 
 ```
 docker-compose up --build
@@ -14,7 +14,7 @@ docker-compose up --build
 
 При этом сервис `topic-creator` в описании [docker-compose.yml](docker-compose.yml) создаёт тему 
 `balanced_topic`  на основании следующих параметров партиций (`8` партиций)и фактора репликации (`3`)
-(детали см. файл [scripts/create-topic.sh](scripts/create-topic.sh)):
+(детали см. в файле [scripts/create-topic.sh](scripts/create-topic.sh)):
 
 ```
 /opt/bitnami/kafka/bin/kafka-topics.sh --create --topic "$TOPIC_NAME" --partitions 8 --replication-factor 3 --bootstrap-server kafka-0:9092
