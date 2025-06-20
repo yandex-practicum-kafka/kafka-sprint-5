@@ -14,7 +14,7 @@ docker-compose up --build
 
 При этом сервис `topic-creator` в описании [docker-compose.yml](docker-compose.yml) создаёт тему 
 `balanced_topic`  на основании следующих параметров партиций (`8` партиций)и фактора репликации (`3`)
-(детали см. файл [/scripts/create-topic.sh](/scripts/create-topic.sh)):
+(детали см. файл [scripts/create-topic.sh](scripts/create-topic.sh)):
 
 ```
 /opt/bitnami/kafka/bin/kafka-topics.sh --create --topic "$TOPIC_NAME" --partitions 8 --replication-factor 3 --bootstrap-server kafka-0:9092
@@ -217,7 +217,7 @@ docker-compose exec kafka-cli /opt/bitnami/kafka/bin/kafka-topics.sh --describe 
 			Topic: balanced_topic   Partition: 7    Leader: 2       Replicas: 2,0,1 Isr: 2,0,1
 ```		
 
-## Шаги при автоматическом создании темы (см. сервис `topic-creator` в [docker-compose.yml](docker-compose.yml) и скрипт [/scripts/create-topic.sh](/scripts/create-topic.sh) в каталоге [/scripts](/scripts):
+## Шаги при автоматическом создании темы (см. сервис `topic-creator` в [docker-compose.yml](docker-compose.yml) и скрипт [scripts/create-topic.sh](scripts/create-topic.sh) в каталоге [scripts](scripts):
 
 ```
 #!/bin/bash
@@ -431,7 +431,7 @@ Topic: balanced_topic   TopicId: 0lfJnYY1TF-G28_zBmYcog PartitionCount: 8       
 
 ## Скриншоты (консоль выполнения команд, Docker Compose, Kafka UI)
 
-### Общее
+### Общее:
 
 ![console-docker-compose.png](images/console-docker-compose.png)
 
@@ -443,16 +443,16 @@ Topic: balanced_topic   TopicId: 0lfJnYY1TF-G28_zBmYcog PartitionCount: 8       
 
 ![ui-balanced_topic.png](images/ui-balanced_topic.png)
 
-### Подготовука, ручное пересоздание
+### Подготовка, ручное пересоздание:
 
 ![console-prepare-manual.png](images/console-prepare-manual.png)
 
-### Авто-создание и перераспределение
+### Авто-создание и перераспределение:
 
 ![console-auto-1.png](images/console-auto-1.png)
 
 ![console-auto-2.png](images/console-auto-2.png)
 
-### Остановка брокера, перераспределение, восстановление работы брокера
+### Остановка брокера, перераспределение, восстановление работы брокера:
 
 ![console-after-failure.png](images/console-after-failure.png)
