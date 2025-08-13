@@ -48,7 +48,7 @@ kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CO
 
 kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal User:1.2.840.113549.1.9.1="#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU" --operation WRITE --topic __consumer_offsets  
 
-# Разрешить DESCRIBE для группы group_id (позволяет клиенту получать метаданные о группе)
+### Разрешить DESCRIBE для группы group_id (позволяет клиенту получать метаданные о группе)
 
 kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU --operation DESCRIBE --group group_id  
 
