@@ -1,34 +1,34 @@
-# Зайти в контейнер kafka-0 для выполнения команд внутри брокера
+### Зайти в контейнер kafka-0 для выполнения команд внутри брокера
 
 docker compose exec kafka-0 bash
 
-# Установить переменные окружения: адрес bootstrap-сервера и путь к конфигу клиента (client.properties с настройками SSL)
+### Установить переменные окружения: адрес bootstrap-сервера и путь к конфигу клиента (client.properties с настройками SSL)
 
 export BOOTSTRAP_SERVERS="kafka-0:9093"
 export COMMAND_CONFIG="/bitnami/kafka/config/certs/client.properties"
 
-# Показать текущие ACL и список топиков (проверка перед созданием/изменением)
+### Показать текущие ACL и список топиков (проверка перед созданием/изменением)
 
 kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --list
 kafka-topics.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --list
 
-# Создать топики topic-1 и topic-2 с 3 партициями и фактором репликации 3
+### Создать топики topic-1 и topic-2 с 3 партициями и фактором репликации 3
 
 kafka-topics.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --create --topic topic-1 --partitions 3 --replication-factor 3
 kafka-topics.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --create --topic topic-2 --partitions 3 --replication-factor 3
 
-# Проверить, что топики созданы
+### Проверить, что топики созданы
 
 kafka-topics.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --list
 
-# Принципал (subject) сертификата пользователя kafka_user, который будет использоваться в ACL
+### Принципал (subject) сертификата пользователя kafka_user, который будет использоваться в ACL
 
-# User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU
+### User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU
 
-# Выдать права пользователю kafka_user:
-# - WRITE для topic-1 и topic-2 (позволяет продюсеру писать в оба топика)
-# - READ только для topic-1 (позволяет консьюмеру читать из topic-1)
-# - DESCRIBE для обоих топиков (для получения метаданных)
+### Выдать права пользователю kafka_user:
+### - WRITE для topic-1 и topic-2 (позволяет продюсеру писать в оба топика)
+### - READ только для topic-1 (позволяет консьюмеру читать из topic-1)
+### - DESCRIBE для обоих топиков (для получения метаданных)
 
 kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal "User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU" --operation Write --topic topic-1
 kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal "User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU" --operation Write --topic topic-2
@@ -36,7 +36,7 @@ kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CO
 kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal "User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU" --operation Describe --topic topic-1
 kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal "User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU" --operation Describe --topic topic-2
 
-# Выдать права на __consumer_offsets: нужно для корректного сохранения/чтения смещений групп (READ и WRITE)
+### Выдать права на __consumer_offsets: нужно для корректного сохранения/чтения смещений групп (READ и WRITE)
 
 kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal User:1.2.840.113549.1.9.1="#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU" --operation READ --topic __consumer_offsets
 
@@ -46,6 +46,6 @@ kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CO
 
 kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU --operation DESCRIBE --group group_id
 
-# Разрешить READ для группы group_id (позволяет консьюмерам в этой группе читать сообщения, если у группы/пользователя есть соответствующие права)
+### Разрешить READ для группы group_id (позволяет консьюмерам в этой группе читать сообщения, если у группы/пользователя есть соответствующие права)
 
 kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal "User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU" --operation READ --group group_id
