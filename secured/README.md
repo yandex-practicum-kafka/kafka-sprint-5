@@ -32,12 +32,13 @@ docker compose up
 ```
 
 2. Выполняем скрипты по созданию тем и настройке прав доступа (в [Topics и ACLs — инструкция по настройке](setup/Topics-n-ACLs-setup.md))  
-    2.1 Переходим в консоль работающего контейнера Kafka-брокера:  
+
+2.1 Переходим в консоль работающего контейнера Kafka-брокера:  
 ```
 docker compose exec kafka-0 bash
 ```
 
-    2.2 Проверяем наличие тем и установленных прав (если запускался/настраивался ранее):  
+2.2 Проверяем наличие тем и установленных прав (если запускался/настраивался ранее):  
 
 ```
 kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --list
@@ -45,7 +46,7 @@ kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CO
 kafka-topics.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --list
 ```
 
-    2.3 Создаём темы. если не созданы и проверяем корректность создания:  
+2.3 Создаём темы. если не созданы и проверяем корректность создания:  
 
 ```
 kafka-topics.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --create --topic topic-1 --partitions 3 --replication-factor 3
@@ -53,7 +54,7 @@ kafka-topics.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_
 
 kafka-topics.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --list
 ```
-    2.4 Определяем последовательно права пользователя на темы, группы:  
+2.4 Определяем последовательно права пользователя на темы, группы:  
 
 ```
 kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal "User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU" --operation Write --topic topic-1
@@ -70,7 +71,7 @@ kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CO
 kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU --operation DESCRIBE --group group_id
 kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal "User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU" --operation READ --group group_id
 ```
-    2.5 Пользователю User:kafka_user соответствует точное именование, исходя из полного описания  
+2.5 Пользователю User:kafka_user соответствует точное именование, исходя из полного описания  
 ```
 User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU
 ```
@@ -98,11 +99,12 @@ keyUsage = critical, digitalSignature, keyEncipherment
 extendedKeyUsage = clientAuth
 ```
 
-    2.6 Рестартуем приложение kafka-app (чтобы применились настройки), либо весь кластер (уже преднастроенный).  
+2.6 Рестартуем приложение kafka-app (чтобы применились настройки), либо весь кластер (уже преднастроенный).  
 	
-    2.7 Просматриваем log-и приложения, producer отправляет сообщения в две темы, consumer принимает (может принять, исходя из настроенных прав) лишь в одной из.  
+2.7 Просматриваем log-и приложения, producer отправляет сообщения в две темы, consumer принимает (может принять, исходя из настроенных прав) лишь в одной из.  
 		(Скриншоты см. в Заключении).  
-    2.8 Останавливаем приложение:  
+
+3. Останавливаем приложение:  
 ```
 docker compose down
 ```
