@@ -542,10 +542,10 @@ bash
 
 ▌Скриншоты (консоль выполнения команд, Docker Compose)
 
-![kafka-brokers.png](images/kafka-brokers.png)
+![kafka-brokers.png](./images/kafka-brokers.png)
 
-![producer-consumer-topic-1,2-console.png](images/producer-consumer-topic-1,2-console.png)
+![producer-consumer-topic-1,2-console.png](./images/producer-consumer-topic-1,2-console.png)
 
-![producer-consumer-topic-1,2.png](images/producer-consumer-topic-1,2.png)
+![producer-consumer-topic-1,2.png](./images/producer-consumer-topic-1,2.png)
 
-![topics-n-acls.png](topics-n-acls.png)
+![topics-n-acls.png](./topics-n-acls.png)
