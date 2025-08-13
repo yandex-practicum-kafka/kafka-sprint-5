@@ -2,22 +2,111 @@
 
 ### Цель задания — настроить защищённое SSL-соединение для кластера Apache Kafka из трёх брокеров с использованием Docker Compose, создать новый топик и протестировать отправку и получение зашифрованных сообщений.
 
-Приложение производит сообщения по расписанию: компонент MessageProducer, используя интервал из application.yml, 
-периодически отправляет фиксированные сообщения в оба топика (topic-1 и topic-2) через KafkaTemplate. 
-Запись проходит успешно, потому что клиент (User:kafka_user), аутентифицированный по SSL-sertifikat'ам, 
+### Описание работы приложения
+
+Приложение производит сообщения по расписанию: компонент MessageProducer, используя интервал из `application.yml`, 
+периодически отправляет фиксированные сообщения в оба топика (topic-1 и topic-2) через `KafkaTemplate`. 
+Запись проходит успешно, потому что клиент (`User:kafka_user`), аутентифицированный по SSL-sertifikat'ам, 
 имеет право Write на оба топика — брокер принимает и сохраняет эти сообщения в соответствующие партиции.  
 
-Потребление происходит в момент появления сообщений в топике: MessageListener с @KafkaListener слушает 
+Потребление происходит в момент появления сообщений в топике: `MessageListener` с `@KafkaListener` слушает 
 topic-1 и сразу обрабатывает (выводит в консоль) поступившие записи, так как kafka_user имеет право Read 
 на topic-1. Код также содержит слушатель для topic-2, но фактическое получение из этого топика в рабочем 
-окружении не произойдёт — брокер отклонит попытки чтения, поскольку у kafka_user нет права Read на topic-2. 
+окружении не произойдёт — брокер отклонит попытки чтения, поскольку у `kafka_user` нет права `Read` на topic-2. 
 Подписка может быть установлена на клиенте, но операции fetch будут отвергнуты авторизацией на стороне брокера 
 и соответствующие ошибки появятся в логах клиента/брокера.  
 
 Ключевым моментом является использование SSL для аутентификации и ACL для авторизации: SSL-ключи/кэжсторы 
-гарантируют, что брокер видит корректный principal, а набор прав (Write/Read/Describe) определяет, 
-какие операции разрешены. Права Describe оставлены для обоих топиков, чтобы клиент мог получать 
+гарантируют, что брокер видит корректный principal, а набор прав (`Write/Read/Describe`) определяет, 
+какие операции разрешены. Права `Describe` оставлены для обоих топиков, чтобы клиент мог получать 
 метаданные топиков без доступа к чтению их содержимого.  
+
+### Запуск приложения (упрощённо)  
+
+1. Собираем проект и запускаем приложение:  
+
+```
+docker compose build
+
+docker compose up
+```
+
+2. Выполняем скрипты по созданию тем и настройке прав доступа (в [Topics и ACLs — инструкция по настройке](setup/Topics-n-ACLs-setup.md))  
+	2.1 Переходим в консоль работающего контейнера Kafka-брокера:  
+```
+docker compose exec kafka-0 bash
+```
+	2.2 Проверяем наличие тем и установленных прав (если запускался/настраивался ранее):  
+
+```
+kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --list
+
+kafka-topics.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --list
+```
+	2.3 Создаём темы. если не созданы и проверяем корректность создания:  
+
+```
+kafka-topics.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --create --topic topic-1 --partitions 3 --replication-factor 3
+kafka-topics.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --create --topic topic-2 --partitions 3 --replication-factor 3
+
+kafka-topics.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --list
+```
+	2.4 Определяем последовательно права пользователя на темы, группы:  
+
+```
+kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal "User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU" --operation Write --topic topic-1
+kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal "User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU" --operation Write --topic topic-2
+
+kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal "User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU" --operation Read --topic topic-1
+
+kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal "User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU" --operation Describe --topic topic-1
+kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal "User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU" --operation Describe --topic topic-2
+
+kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal User:1.2.840.113549.1.9.1="#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU" --operation READ --topic __consumer_offsets
+kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal User:1.2.840.113549.1.9.1="#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU" --operation WRITE --topic __consumer_offsets
+
+kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU --operation DESCRIBE --group group_id
+kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal "User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU" --operation READ --group group_id
+```
+	2.5 Пользователю User:kafka_user соответствует точное именование, исходя из полного описания  
+```
+User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU
+```
+
+```
+[req]
+prompt = no
+distinguished_name = dn
+default_md = sha256
+default_bits = 4096
+req_extensions = v3_req
+
+[ dn ]
+countryName = RU
+organizationName = Organization
+organizationalUnitName = OrganizationalUnit
+localityName = Locality
+commonName = kafka_user
+emailAddress = kafka_user@organization.ru
+
+[ v3_req ]
+basicConstraints = CA:FALSE
+nsComment = "OpenSSL Generated Certificate"
+keyUsage = critical, digitalSignature, keyEncipherment
+extendedKeyUsage = clientAuth
+```
+
+	2.6 Рестартуем приложение kafka-app (чтобы применились настройки), либо весь кластер (уже преднастроенный).  
+	
+	2.7 Просматриваем log-и приложения, producer отправляет сообщения в две темы, consumer принимает (может принять, исходя из настроенных прав) лишь в одной из.  
+		(Скриншоты см. в Заключении).  
+	2.8 Останавливаем приложение:
+```
+docker compose down
+```
+
+Далее, более подробно...
+	
 
 ### Структура проекта  
 
@@ -97,7 +186,7 @@ topic-1 и сразу обрабатывает (выводит в консоль
 
 ```
 
-### Описание всех сервисов (конфигурация)  
+### Описание всех сервисов (конфигурация) [docker-compose.yml](docker-compose.yml):  
 
 ```
 version: "3.9"
@@ -296,13 +385,13 @@ volumes:
 
 Центр сертификации используется для подписи сертификатов для брокеров и клиентов Kafka.  
 
-1. Измените файл ca.cnf (по желанию) для настройки вашей CA (Common Name, Organization и т.д.).  
+1. Измените файл [ca.cnf](ca.cnf) (по желанию) для настройки вашей CA (Common Name, Organization и т.д.).  
 
-2. (Windows) Запустите скрипт generate_ca_key.bat.  
+2. (Windows) Запустите скрипт [generate_ca_key.bat](generate_ca_key.bat).  
   
 ```generate_ca_key.bat```
 
-	Этот скрипт сгенерирует приватный ключ CA (ca.key) и самоподписанный сертификат CA (ca.crt).  
+	Этот скрипт сгенерирует приватный ключ CA (ca.key) и самоподписанный сертификат CA ([ca.cnf](ca.cnf)).  
 		*Если вы не на Windows, используйте команды openssl из скрипта.*  
 
 ### 2. Создание сертификатов для брокеров Kafka  
@@ -310,22 +399,22 @@ volumes:
 Для каждого брокера Kafka (kafka-0, kafka-1, kafka-2) необходимо создать keystore и truststore.  
 
 1.  Для каждого брокера измените файл kafka-<broker_id>.cnf в соответствующей директории  
-(kafka-0-creds, kafka-1-creds, kafka-2-creds) и укажите корректный Common Name (CN).  
+(`kafka-0-creds`, `kafka-1-creds`, `kafka-2-creds`) и укажите корректный Common Name (CN).  
 
 **Важно:** Common Name должен совпадать с hostname брокера в docker-compose.yml (например, kafka-0).  
 
-2.  **(Windows)** Запустите скрипт generate_keys.bat.  
+2.  **(Windows)** Запустите скрипт [generate_keys.bat](generate_keys.bat).  
 
 ```generate_keys.bat```
 
     Этот скрипт:
-    *   Сгенерирует приватный ключ брокера (kafka-<broker_id>.key).
-    *   Создаст Certificate Signing Request (CSR) (kafka-<broker_id>.csr).
-    *   Подпишет CSR с помощью CA, создав сертификат брокера (kafka-<broker_id>.crt).
-    *   Создаст формат PEM для сертификата брокера (kafka-<broker_id>.pem).
-    *   Создаст формат P12 для ключа и сертификата брокера (kafka-<broker_id>.p12).
-    *   Импортирует сертификат CA в truststore (kafka.truststore.jks).
-    *   Импортирует ключ и сертификат брокера в keystore (kafka.keystore.jks).
+    *   Сгенерирует приватный ключ брокера (`kafka-<broker_id>.key`).
+    *   Создаст Certificate Signing Request (CSR) (`kafka-<broker_id>.csr`).
+    *   Подпишет CSR с помощью CA, создав сертификат брокера (`kafka-<broker_id>.crt`).
+    *   Создаст формат PEM для сертификата брокера (`kafka-<broker_id>.pem`).
+    *   Создаст формат P12 для ключа и сертификата брокера (`kafka-<broker_id>.p12`).
+    *   Импортирует сертификат CA в truststore (`kafka.truststore.jks`).
+    *   Импортирует ключ и сертификат брокера в keystore (`kafka.keystore.jks`).
 
     *Если вы не на Windows, используйте команды openssl из скрипта, адаптировав пути.*
 
@@ -335,21 +424,21 @@ volumes:
 
 Для клиентов Kafka (производителя и потребителя) также необходимо создать keystore и truststore.  
 
-1.  Измените файл clients-creds/kafka_user.cnf и укажите Common Name.  
+1.  Измените файл [clients-creds/kafka_user.cnf](clients-creds/kafka_user.cnf) и укажите Common Name.  
 
-2.  **(Windows)** Запустите скрипт generate_user_keys.bat.  
+2.  **(Windows)** Запустите скрипт [generate_user_keys.bat](generate_user_keys.bat).  
 
 ```generate_user_keys.bat```
 
-  Этот скрипт выполнит аналогичные действия, что и generate_keys.bat, но для пользователя Kafka. Он создаст:  
-  •  Приватный ключ пользователя (kafka_user.key).  
-  •  CSR (kafka_user.csr).  
-  •  Сертификат пользователя (kafka_user.crt).  
+  Этот скрипт выполнит аналогичные действия, что и [generate_keys.bat](generate_keys.bat), но для пользователя Kafka. Он создаст:  
+  •  Приватный ключ пользователя (`kafka_user.key`).  
+  •  CSR (`kafka_user.csr`).  
+  •  Сертификат пользователя (`kafka_user.crt`).  
   •  Форматы PEM и P12 для сертификата пользователя.  
-  •  Keystore (kafka_user.keystore.jks).  
-  •  Truststore (kafka_user.truststore.jks).  
+  •  Keystore (`kafka_user.keystore.jks`).  
+  •  Truststore (`kafka_user.truststore.jks`).  
 
-  Если вы не на Windows, используйте команды openssl из скрипта, адаптировав пути.  
+  Если вы не на Windows, используйте команды `openssl` из скрипта, адаптировав пути.  
 
 ▌4. Настройка Docker Compose
 
@@ -359,19 +448,19 @@ volumes:
 bash
   ./gradlew run --args='kafka-storage.sh random-uuid' # Или как вы запускаете kafka-storage.sh
 ```
-  И замените REPLACE_WITH_CLUSTER_UUID в docker-compose.yml на сгенерированный UUID.  
+  И замените `REPLACE_WITH_CLUSTER_UUID` в docker-compose.yml на сгенерированный `UUID`.  
 
-2. Настройка docker-compose.yml:  
+2. Настройка [docker-compose.yml](docker-compose.yml):  
 
-  •  Убедитесь, что параметры KAFKA_CFG_LISTENERS, KAFKA_CFG_ADVERTISED_LISTENERS, KAFKA_CFG_CONTROLLER_QUORUM_VOTERS, KAFKA_CFG_SSL_* в docker-compose.yml соответствуют сгенерированным сертификатам и вашей сетевой конфигурации. Важно: KAFKA_CFG_ADVERTISED_LISTENERS должны быть доступны клиентам.  
+  •  Убедитесь, что параметры `KAFKA_CFG_LISTENERS`, `KAFKA_CFG_ADVERTISED_LISTENERS`, `KAFKA_CFG_CONTROLLER_QUORUM_VOTERS`, `KAFKA_CFG_SSL_*` в [docker-compose.yml](docker-compose.yml) соответствуют сгенерированным сертификатам и вашей сетевой конфигурации. Важно: `KAFKA_CFG_ADVERTISED_LISTENERS` должны быть доступны клиентам.  
 
-  •  Раскомментируйте и настройте соответствующие секции volumes, чтобы брокеры могли получить доступ к файлам Keystore и Truststore, созданным для каждого брокера.  
+  •  Раскомментируйте и настройте соответствующие секции `volumes`, чтобы брокеры могли получить доступ к файлам Keystore и Truststore, созданным для каждого брокера.  
 
-  •  Измените пароли по умолчанию (changeit) в docker-compose.yml.  
+  •  Измените пароли по умолчанию (changeit) в [docker-compose.yml](docker-compose.yml).  
 
 3. Настройка server.properties (пример):  
 
-  Пример файла kafka-0-creds/server.properties (поместите его в нужный каталог):  
+  Пример файла [kafka-0-creds/server.properties](kafka-0-creds/server.properties) (поместите его в нужный каталог):  
   
 ```
 listeners=SSL://:9094
@@ -389,17 +478,17 @@ ssl.truststore.password=changeit
 
 ▌5. Настройка ACL (Access Control Lists)  
 
-1. Определение Super Users: В docker-compose.yml, в параметре KAFKA_CFG_SUPER_USERS, укажите CN (Common Name) сертификатов ваших суперпользователей (обычно администраторов).  
+1. Определение Super Users: В [docker-compose.yml](docker-compose.yml), в параметре KAFKA_CFG_SUPER_USERS, укажите CN (Common Name) сертификатов ваших суперпользователей (обычно администраторов).  
   
 ```
   KAFKA_CFG_SUPER_USERS: "User:CN=kafka-0,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU;User:CN=kafka-1,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU;User:CN=kafka-2,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU"
 ```
 
-    Убедитесь, что CN соответствует тем, что вы указали в kafka-<broker_id>.cnf.  
+    Убедитесь, что CN соответствует тем, что вы указали в `kafka-<broker_id>.cnf`.  
 
-2.  **Создание топиков topic-1 и topic-2**:  Используйте скрипт kafka-topics.sh (или Kafka Manager) для создания топиков.  
+2.  **Создание топиков topic-1 и topic-2**:  Используйте скрипт `kafka-topics.sh` (или Kafka Manager) для создания топиков.  
 
-3.  **Настройка прав доступа:** Используйте скрипт kafka-acls.sh (или Kafka Manager) для установки ACL.  *Пример:*  
+3.  **Настройка прав доступа:** Используйте скрипт `kafka-acls.sh` (или Kafka Manager) для установки ACL.  *Пример:*  
 
 ```
 # Разрешить всем производителям и потребителям доступ к topic-1
@@ -432,7 +521,7 @@ properties
     ssl.key.password=changeit
 ```
 
-**Важно:** Полный файл преднастроек (setup/Topics-n-ACLs-setup.md) (создание тем, права доступа):  
+**Важно:** Полный файл преднастроек ([setup/Topics-n-ACLs-setup.md](setup/Topics-n-ACLs-setup.md)) (создание тем, права доступа):  
 
 ```
 # Зайти в контейнер kafka-0 для выполнения команд внутри брокера
@@ -480,7 +569,7 @@ kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CO
 
 ▌6. Настройка клиентского приложения (src)  
 
-1. В файле src/main/resources/application.yml или application.properties настройте параметры подключения к Kafka:  
+1. В файле [src/main/resources/application.yml](src/main/resources/application.yml) или application.properties настройте параметры подключения к Kafka:  
 
   
 ```
@@ -526,7 +615,7 @@ bash
   docker-compose up -d
 ```
 
-2. Убедитесь, что все сервисы запущены и здоровы (с помощью docker ps и docker logs).  
+2. Убедитесь, что все сервисы запущены и здоровы (с помощью `docker ps` и `docker logs`).  
 
 ▌8. Тестирование  
 
