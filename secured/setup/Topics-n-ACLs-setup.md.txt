@@ -1,3 +1,4 @@
+
 # Зайти в контейнер kafka-0 для выполнения команд внутри брокера
 
 docker compose exec kafka-0 bash
