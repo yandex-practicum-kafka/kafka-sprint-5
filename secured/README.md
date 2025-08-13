@@ -392,8 +392,8 @@ ssl.truststore.password=changeit
 1. Определение Super Users: В docker-compose.yml, в параметре KAFKA_CFG_SUPER_USERS, укажите CN (Common Name) сертификатов ваших суперпользователей (обычно администраторов).  
   
 ```
-yaml
   KAFKA_CFG_SUPER_USERS: "User:CN=kafka-0,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU;User:CN=kafka-1,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU;User:CN=kafka-2,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU"
+```
 
     Убедитесь, что CN соответствует тем, что вы указали в kafka-<broker_id>.cnf.  
 
