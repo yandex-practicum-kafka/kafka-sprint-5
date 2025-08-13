@@ -402,21 +402,20 @@ yaml
 3.  **Настройка прав доступа:** Используйте скрипт kafka-acls.sh (или Kafka Manager) для установки ACL.  *Пример:*  
 
 ```
-bash
-  # Разрешить всем производителям и потребителям доступ к topic-1
-  kafka-acls.sh --bootstrap-server kafka-0:9093 \
-   --command-config ./clients-creds/admin.properties \
-   --add --allow-principal User:CN=kafka_user,O=Example,L=Location,C=US --topic topic-1 --operation Read --operation Write
+# Разрешить всем производителям и потребителям доступ к topic-1
+kafka-acls.sh --bootstrap-server kafka-0:9093 \
+--command-config ./clients-creds/admin.properties \
+--add --allow-principal User:CN=kafka_user,O=Example,L=Location,C=US --topic topic-1 --operation Read --operation Write
 
-  # Разрешить производителям доступ к topic-2
-  kafka-acls.sh --bootstrap-server kafka-0:9093 \
-   --command-config ./clients-creds/admin.properties \
-   --add --allow-principal User:CN=kafka_user,O=Example,L=Location,C=US --topic topic-2 --operation Write
+# Разрешить производителям доступ к topic-2
+kafka-acls.sh --bootstrap-server kafka-0:9093 \
+--command-config ./clients-creds/admin.properties \
+--add --allow-principal User:CN=kafka_user,O=Example,L=Location,C=US --topic topic-2 --operation Write
 
-  # Запретить потребителям доступ к topic-2 (обратите внимание на --deny)
-   kafka-acls.sh --bootstrap-server kafka-0:9093 \
-   --command-config ./clients-creds/admin.properties \
-   --add --deny-principal User:CN=kafka_user,O=Example,L=Location,C=US --topic topic-2 --operation Read
+# Запретить потребителям доступ к topic-2 (обратите внимание на --deny)
+kafka-acls.sh --bootstrap-server kafka-0:9093 \
+--command-config ./clients-creds/admin.properties \
+--add --deny-principal User:CN=kafka_user,O=Example,L=Location,C=US --topic topic-2 --operation Read
 
 ```
 
