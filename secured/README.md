@@ -47,7 +47,7 @@ kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CO
 kafka-topics.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --list
 ```
 
-2.3 Создаём темы. если не созданы и проверяем корректность создания:  
+2.3 Создаём темы, если не созданы и проверяем корректность создания:  
 
 ```
 kafka-topics.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --create --topic topic-1 --partitions 3 --replication-factor 3
