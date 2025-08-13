@@ -1,10 +1,10 @@
 @echo off
 
-REM Установите путь к OpenSSL
+REM РЈСЃС‚Р°РЅРѕРІРёС‚Рµ РїСѓС‚СЊ Рє OpenSSL
 SET OPENSSL_PATH=%OPENSSL_HOME%\bin\openssl.exe
 
-REM  Выполняем команду OpenSSL для генерации самоподписанного сертификата (CA - Certificate Authority).
+REM  Р’С‹РїРѕР»РЅСЏРµРј РєРѕРјР°РЅРґСѓ OpenSSL РґР»СЏ РіРµРЅРµСЂР°С†РёРё СЃР°РјРѕРїРѕРґРїРёСЃР°РЅРЅРѕРіРѕ СЃРµСЂС‚РёС„РёРєР°С‚Р° (CA - Certificate Authority).
 %OPENSSL_PATH% req -x509 -new -nodes -keyout ca.key -sha256 -days 3650 -out ca.crt -config ca.cnf
 
-REM  Объединяем сертификат (ca.crt) и личный ключ (ca.key) в один файл (ca.pem).
+REM  РћР±СЉРµРґРёРЅСЏРµРј СЃРµСЂС‚РёС„РёРєР°С‚ (ca.crt) Рё Р»РёС‡РЅС‹Р№ РєР»СЋС‡ (ca.key) РІ РѕРґРёРЅ С„Р°Р№Р» (ca.pem).
 copy /b ca.crt + ca.key ca.pem

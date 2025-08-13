@@ -1,31 +1,31 @@
 @echo off
-REM Установите путь к OpenSSL и keytool (при необходимости)
+REM РЈСЃС‚Р°РЅРѕРІРёС‚Рµ РїСѓС‚СЊ Рє OpenSSL Рё keytool (РїСЂРё РЅРµРѕР±С…РѕРґРёРјРѕСЃС‚Рё)
 SET OPENSSL_PATH=%OPENSSL_HOME%\bin\openssl.exe
 SET KEYTOOL_PATH=%JAVA_HOME%\bin\keytool.exe
 
-REM Укажите расположение ca.key и ca.crt
+REM РЈРєР°Р¶РёС‚Рµ СЂР°СЃРїРѕР»РѕР¶РµРЅРёРµ ca.key Рё ca.crt
 SET CA_KEY=ca.key
 SET CA_CRT=ca.crt
 
-REM Настройки пользователя
+REM РќР°СЃС‚СЂРѕР№РєРё РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
 SET USER_NAME=kafka_user
 
-REM 1. Генерация CSR и ключа для пользователя
+REM 1. Р“РµРЅРµСЂР°С†РёСЏ CSR Рё РєР»СЋС‡Р° РґР»СЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
 %OPENSSL_PATH% req -new -newkey rsa:2048 -keyout clients-creds/%USER_NAME%.key -out clients-creds/%USER_NAME%.csr -config clients-creds/%USER_NAME%.cnf -nodes
 
-REM 2. Подпись сертификата пользователя с использованием корневого сертификата CA
+REM 2. РџРѕРґРїРёСЃСЊ СЃРµСЂС‚РёС„РёРєР°С‚Р° РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ СЃ РёСЃРїРѕР»СЊР·РѕРІР°РЅРёРµРј РєРѕСЂРЅРµРІРѕРіРѕ СЃРµСЂС‚РёС„РёРєР°С‚Р° CA
 %OPENSSL_PATH% x509 -req -days 3650 -in clients-creds/%USER_NAME%.csr -CA %CA_CRT% -CAkey %CA_KEY% -CAcreateserial -out clients-creds/%USER_NAME%.crt -extfile clients-creds/%USER_NAME%.cnf -extensions v3_req
 
-REM 3. Создание PKCS#12 хранилища для пользователя
+REM 3. РЎРѕР·РґР°РЅРёРµ PKCS#12 С…СЂР°РЅРёР»РёС‰Р° РґР»СЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
 %OPENSSL_PATH% pkcs12 -export -inkey clients-creds/%USER_NAME%.key -in clients-creds/%USER_NAME%.crt -out clients-creds/%USER_NAME%.p12 -name %USER_NAME% -passout pass:changeit
 
-REM 4. Импорт PKCS#12 хранилища в JKS keystore
+REM 4. РРјРїРѕСЂС‚ PKCS#12 С…СЂР°РЅРёР»РёС‰Р° РІ JKS keystore
 %KEYTOOL_PATH% -importkeystore -srckeystore clients-creds/%USER_NAME%.p12 -srcstoretype PKCS12 -srcstorepass changeit -destkeystore clients-creds/%USER_NAME%.keystore.jks -deststoretype JKS -deststorepass changeit -noprompt -alias %USER_NAME%
 
-REM 5. Создание PEM файла для пользователя
+REM 5. РЎРѕР·РґР°РЅРёРµ PEM С„Р°Р№Р»Р° РґР»СЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
 %OPENSSL_PATH% pkcs12 -in clients-creds/%USER_NAME%.p12 -out clients-creds/%USER_NAME%.pem -nodes -passin pass:changeit
 
-REM 6. Добавление CA в truststore пользователя
+REM 6. Р”РѕР±Р°РІР»РµРЅРёРµ CA РІ truststore РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
 %KEYTOOL_PATH% -import -trustcacerts -file %CA_CRT% -alias ca -keystore clients-creds/%USER_NAME%.truststore.jks -storepass changeit -noprompt
 
 @echo on
