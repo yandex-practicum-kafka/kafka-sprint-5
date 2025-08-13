@@ -23,7 +23,7 @@ kafka-topics.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_
 
 ### Принципал (subject) сертификата пользователя kafka_user, который будет использоваться в ACL
 
-### User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU
+User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU
 
 ### Выдать права пользователю kafka_user:
 ### - WRITE для topic-1 и topic-2 (позволяет продюсеру писать в оба топика)
