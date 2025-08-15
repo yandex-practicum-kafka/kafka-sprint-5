@@ -3,9 +3,9 @@ set -eu
 
 log() { printf '%s | %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"; }
 
-# bootstrap: взять из BOOTSTRAP_SERVERS или из KAFKA_CFG_BOOTSTRAP_SERVERS (если задано в compose)
+# bootstrap: РІР·СЏС‚СЊ РёР· BOOTSTRAP_SERVERS РёР»Рё РёР· KAFKA_CFG_BOOTSTRAP_SERVERS (РµСЃР»Рё Р·Р°РґР°РЅРѕ РІ compose)
 BOOTSTRAP_SERVERS="${BOOTSTRAP_SERVERS:-${KAFKA_CFG_BOOTSTRAP_SERVERS:-kafka-0:9093}}"
-# COMMAND_CONFIG может быть передан явно; если нет — автодетект
+# COMMAND_CONFIG РјРѕР¶РµС‚ Р±С‹С‚СЊ РїРµСЂРµРґР°РЅ СЏРІРЅРѕ; РµСЃР»Рё РЅРµС‚ вЂ” Р°РІС‚РѕРґРµС‚РµРєС‚
 COMMAND_CONFIG="${COMMAND_CONFIG:-}"
 PRINCIPAL="${1:-User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU}"
 GROUP_ID="${GROUP_ID:-group_id}"
@@ -15,14 +15,14 @@ log "COMMAND_CONFIG(incoming)=${COMMAND_CONFIG:-<none>}"
 log "PRINCIPAL=$PRINCIPAL"
 log "GROUP_ID=$GROUP_ID"
 
-# Найти исполняемые kafka-утилиты в PATH или стандартных местах
+# РќР°Р№С‚Рё РёСЃРїРѕР»РЅСЏРµРјС‹Рµ kafka-СѓС‚РёР»РёС‚С‹ РІ PATH РёР»Рё СЃС‚Р°РЅРґР°СЂС‚РЅС‹С… РјРµСЃС‚Р°С…
 find_exec() {
   name="$1"
   if command -v "$name" >/dev/null 2>&1; then
     command -v "$name"
     return 0
   fi
-  # типичные места для Bitnami / Confluent / upstream
+  # С‚РёРїРёС‡РЅС‹Рµ РјРµСЃС‚Р° РґР»СЏ Bitnami / Confluent / upstream
   for p in /opt/bitnami/kafka/bin/"$name" /opt/kafka/bin/"$name" /usr/bin/"$name" /usr/local/bin/"$name"; do
     if [ -x "$p" ]; then
       printf '%s\n' "$p"
@@ -45,15 +45,15 @@ fi
 
 log "Using: kafka-topics='$KAFKA_TOPICS', kafka-acls='$KAFKA_ACLS'"
 
-# Автодетект client.properties или генерация временного из env KAFKA_CFG_*
+# РђРІС‚РѕРґРµС‚РµРєС‚ client.properties РёР»Рё РіРµРЅРµСЂР°С†РёСЏ РІСЂРµРјРµРЅРЅРѕРіРѕ РёР· env KAFKA_CFG_*
 select_or_gen_config() {
-  # если явно задан и файл существует — используем
+  # РµСЃР»Рё СЏРІРЅРѕ Р·Р°РґР°РЅ Рё С„Р°Р№Р» СЃСѓС‰РµСЃС‚РІСѓРµС‚ вЂ” РёСЃРїРѕР»СЊР·СѓРµРј
   if [ -n "$COMMAND_CONFIG" ] && [ -f "$COMMAND_CONFIG" ]; then
     printf '%s' "$COMMAND_CONFIG"
     return 0
   fi
 
-  # проверяем обычные места (монтированные директории /certs-*)
+  # РїСЂРѕРІРµСЂСЏРµРј РѕР±С‹С‡РЅС‹Рµ РјРµСЃС‚Р° (РјРѕРЅС‚РёСЂРѕРІР°РЅРЅС‹Рµ РґРёСЂРµРєС‚РѕСЂРёРё /certs-*)
   for c in /certs-0/client.properties /certs-1/client.properties /certs-2/client.properties /bitnami/kafka/config/certs/client.properties; do
     if [ -f "$c" ]; then
       printf '%s' "$c"
@@ -61,8 +61,8 @@ select_or_gen_config() {
     fi
   done
 
-  # Если нет client.properties, попробуем сгенерировать временный на основе переменных окружения:
-  # Ожидаемые переменные (в compose вы их передаёте): KAFKA_CFG_SSL_TRUSTSTORE_LOCATION, KAFKA_CFG_SSL_TRUSTSTORE_PASSWORD,
+  # Р•СЃР»Рё РЅРµС‚ client.properties, РїРѕРїСЂРѕР±СѓРµРј СЃРіРµРЅРµСЂРёСЂРѕРІР°С‚СЊ РІСЂРµРјРµРЅРЅС‹Р№ РЅР° РѕСЃРЅРѕРІРµ РїРµСЂРµРјРµРЅРЅС‹С… РѕРєСЂСѓР¶РµРЅРёСЏ:
+  # РћР¶РёРґР°РµРјС‹Рµ РїРµСЂРµРјРµРЅРЅС‹Рµ (РІ compose РІС‹ РёС… РїРµСЂРµРґР°С‘С‚Рµ): KAFKA_CFG_SSL_TRUSTSTORE_LOCATION, KAFKA_CFG_SSL_TRUSTSTORE_PASSWORD,
   # KAFKA_CFG_SSL_KEYSTORE_LOCATION, KAFKA_CFG_SSL_KEYSTORE_PASSWORD, KAFKA_CFG_SSL_KEY_PASSWORD, KAFKA_CFG_SECURITY_PROTOCOL
   if [ -n "${KAFKA_CFG_SSL_TRUSTSTORE_LOCATION:-}" ] && [ -n "${KAFKA_CFG_SSL_TRUSTSTORE_PASSWORD:-}" ]; then
     TS="${KAFKA_CFG_SSL_TRUSTSTORE_LOCATION}"
@@ -80,7 +80,7 @@ select_or_gen_config() {
       [ -n "$KEYPASS" ] && echo "ssl.key.password=$KEYPASS"
       echo "ssl.endpoint.identification.algorithm="
     } > "$TMP_CONF"
-    # проверка наличия файлов truststore/keystore
+    # РїСЂРѕРІРµСЂРєР° РЅР°Р»РёС‡РёСЏ С„Р°Р№Р»РѕРІ truststore/keystore
     if [ ! -f "$TS" ]; then
       log "ERROR: truststore not found at $TS (needed to generate client.properties)"
       return 1
@@ -94,7 +94,7 @@ select_or_gen_config() {
     return 0
   fi
 
-  # Ничего не найдено
+  # РќРёС‡РµРіРѕ РЅРµ РЅР°Р№РґРµРЅРѕ
   return 1
 }
 
@@ -106,7 +106,7 @@ fi
 
 log "Using client config: $USED_CONFIG"
 
-# Ждать пока Kafka не станет доступен (показываем первые stderr для диагностики)
+# Р–РґР°С‚СЊ РїРѕРєР° Kafka РЅРµ СЃС‚Р°РЅРµС‚ РґРѕСЃС‚СѓРїРµРЅ (РїРѕРєР°Р·С‹РІР°РµРј РїРµСЂРІС‹Рµ stderr РґР»СЏ РґРёР°РіРЅРѕСЃС‚РёРєРё)
 TIMEOUT=${TIMEOUT:-600}
 SLEEP=${SLEEP:-5}
 elapsed=0
@@ -117,7 +117,7 @@ while true; do
     log "Kafka is reachable"
     break
   fi
-  # вывести stderr первого failed attempt для понимания причины
+  # РІС‹РІРµСЃС‚Рё stderr РїРµСЂРІРѕРіРѕ failed attempt РґР»СЏ РїРѕРЅРёРјР°РЅРёСЏ РїСЂРёС‡РёРЅС‹
   if [ "$firsterr" -eq 1 ]; then
     log "First failure output (stderr) for debug:"
     "$KAFKA_TOPICS" --bootstrap-server "$BOOTSTRAP_SERVERS" --command-config "$USED_CONFIG" --list 2>/tmp/kterr || true
@@ -134,11 +134,11 @@ while true; do
   probe=$((probe + 1))
 done
 
-# Создать топик, если нет
+# РЎРѕР·РґР°С‚СЊ С‚РѕРїРёРє, РµСЃР»Рё РЅРµС‚
 create_topic_if_missing() {
   topic="$1"; parts="$2"; rf="$3"
   if "$KAFKA_TOPICS" --bootstrap-server "$BOOTSTRAP_SERVERS" --command-config "$USED_CONFIG" --describe --topic "$topic" >/dev/null 2>&1; then
-    log "Topic '$topic' exists — skip"
+    log "Topic '$topic' exists вЂ” skip"
   else
     log "Creating topic '$topic' (partitions=$parts, replication=$rf)"
     if ! "$KAFKA_TOPICS" --bootstrap-server "$BOOTSTRAP_SERVERS" --command-config "$USED_CONFIG" --create --topic "$topic" --partitions "$parts" --replication-factor "$rf"; then
@@ -147,7 +147,7 @@ create_topic_if_missing() {
   fi
 }
 
-# Добавить ACL (не падаем при ошибке)
+# Р”РѕР±Р°РІРёС‚СЊ ACL (РЅРµ РїР°РґР°РµРј РїСЂРё РѕС€РёР±РєРµ)
 add_acl_safely() {
   log "Adding ACL: $"
   if ! "$KAFKA_ACLS" --bootstrap-server "$BOOTSTRAP_SERVERS" --command-config "$USED_CONFIG" --add --allow-principal "$PRINCIPAL" "$@"; then
