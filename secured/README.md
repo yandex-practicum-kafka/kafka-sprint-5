@@ -6,22 +6,35 @@
 
 Приложение производит сообщения по расписанию: компонент MessageProducer, используя интервал из [application.yml](src/main/resources/application.yml), 
 периодически отправляет фиксированные сообщения в оба топика (topic-1 и topic-2) через `KafkaTemplate`. 
-Запись проходит успешно, потому что клиент (`User:kafka_user`), аутентифицированный по SSL-sertifikat'ам, 
+Запись проходит успешно, потому что клиент (`User:kafka_user`), аутентифицированный по SSL-сертификатам, 
 имеет право Write на оба топика — брокер принимает и сохраняет эти сообщения в соответствующие партиции.  
 
 Потребление происходит в момент появления сообщений в топике: [consumer/MessageListener.java](src/main/java/com/example/kafka/consumer/MessageListener.java) с `@KafkaListener` слушает 
 topic-1 и сразу обрабатывает (выводит в консоль) поступившие записи, так как kafka_user имеет право Read 
-на topic-1. Код также содержит слушатель для topic-2, но фактическое получение из этого топика в рабочем 
-окружении не произойдёт — брокер отклонит попытки чтения, поскольку у `kafka_user` нет права `Read` на topic-2. 
-Подписка может быть установлена на клиенте, но операции fetch будут отвергнуты авторизацией на стороне брокера 
-и соответствующие ошибки появятся в логах клиента/брокера.  
+на topic-1. 
 
-Ключевым моментом является использование SSL для аутентификации и ACL для авторизации: SSL-ключи/кэжсторы 
+Код также содержит закомментированный, созданный для отладки, слушатель для темы topic-2  
+
+(он может быть включен через файл настройки, переменную enable-topic2-consumer, 
+дополнительно при этом потребуется выдать права Read на чтение topic-2 
+для пользователя `User:kafka_user` посредством Kafka ACL,
+иначе операции fetch будут отклонены авторизацией на стороне брокера 
+и соответствующие ошибки появятся в логах клиента/брокера.)  
+
+Ключевым моментом является использование SSL для аутентификации и ACL для авторизации: SSL-ключи (keystore/trustore)
 гарантируют, что брокер видит корректный principal, а набор прав (`Write/Read/Describe`) определяет, 
 какие операции разрешены. Права `Describe` оставлены для обоих топиков, чтобы клиент мог получать 
 метаданные топиков без доступа к чтению их содержимого.  
 
-### Запуск приложения (упрощённо)  
+### Создание тем и настройка прав доступа
+
+Создание топиков и настройка прав доступа происходит автоматически 
+(см. сервис `kafka-setup` в [docker-compose.yml](docker-compose.yml) 
+и скрипт создания топиков и настройки прав доступа [setup-topics-acls.sh](setup/setup-topics-acls.sh)).
+
+Так же темы могут быть созданы и права доступы выданы вручную (см. ниже).
+
+### Запуск приложения
 
 #### 1. Собираем проект и запускаем приложение:  
 
@@ -30,16 +43,64 @@ docker compose build
 
 docker compose up
 ```
+#### 2. Автоматическое создание тем и настройка прав доступа
 
-#### 2. Выполняем скрипты по созданию тем и настройке прав доступа  
+Автоматическое создание тем и настройка прав доступа происходит в сервисе kafka-setup посредством вызова скрипта [setup-topics-acls.sh](setup/setup-topics-acls.sh).
+
+В нём создаются темы topic-1, topic-2 и настраиваются права на запись и чтение для темы topic-1 и только на запись для темы topic-2.
+
+Право Describe выдано для обоих тем. Также выдаются права Describe, Read для группы group_id (требуется для корректного присоединения consumer-а) 
+и права Read, Write на тему __consumer_offsets.
+
+```
+log "Creating topics..."
+create_topic_if_missing topic-1 3 3
+create_topic_if_missing topic-2 3 3
+
+log "Applying ACLs for $PRINCIPAL"
+add_acl_safely --operation Write --topic topic-1
+add_acl_safely --operation Write --topic topic-2
+add_acl_safely --operation Read  --topic topic-1
+add_acl_safely --operation Describe --topic topic-1
+add_acl_safely --operation Describe --topic topic-2
+add_acl_safely --operation Read --topic __consumer_offsets
+add_acl_safely --operation Write --topic __consumer_offsets
+add_acl_safely --operation Describe --group "$GROUP_ID"
+add_acl_safely --operation Read     --group "$GROUP_ID"
+
+```
+
+(При первом запуске/настройке тем/прав доступа, возможно, потребуется рестартовать kafka-app для повторной инициализации consumer-а. При повторных запусках при условии сохранении `volumes` такой необходимости уже не будет).
+
+#### 3. Журналирование
+
+Просматриваем log-и приложения, producer отправляет сообщения в две темы, consumer принимает (может принять, исходя из настроенных прав) лишь в одной из.  
+		(Скриншоты см. в Заключении).  
+
+Настройки (создание темы и прав доступа):
+
+![setup-topics-acls-1.png](images/setup-topics-acls-1.png)
+
+![setup-topics-acls-2.png](images/setup-topics-acls-2.png)
+
+#### 4. Останавливаем приложение:  
+```
+docker compose down
+```
+
+При желании можно вручную создать темы и настроить права доступа (см. следующий пункт):
+
+
+#### 5. Ручное создание тем и настройка прав доступа
+
 (в [Topics и ACLs — инструкция по настройке](setup/Topics-n-ACLs-setup.md))  
 
-2.1 Переходим в консоль работающего контейнера Kafka-брокера:  
+5.1 Переходим в консоль работающего контейнера Kafka-брокера:  
 ```
 docker compose exec kafka-0 bash
 ```
 
-2.2 Проверяем наличие тем и установленных прав (если запускался/настраивался ранее):  
+5.2 Проверяем наличие тем и установленных прав (если запускался/настраивался ранее):  
 
 ```
 kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --list
@@ -47,7 +108,7 @@ kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CO
 kafka-topics.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --list
 ```
 
-2.3 Создаём темы, если не созданы и проверяем корректность создания:  
+5.3 Создаём темы, если не созданы и проверяем корректность создания:  
 
 ```
 kafka-topics.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --create --topic topic-1 --partitions 3 --replication-factor 3
@@ -55,7 +116,7 @@ kafka-topics.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_
 
 kafka-topics.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --list
 ```
-2.4 Определяем последовательно права пользователя на темы, группы:  
+5.4 Определяем последовательно права пользователя на темы, группы:  
 
 ```
 kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal "User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU" --operation Write --topic topic-1
@@ -72,7 +133,7 @@ kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CO
 kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU --operation DESCRIBE --group group_id
 kafka-acls.sh --bootstrap-server $BOOTSTRAP_SERVERS --command-config $COMMAND_CONFIG --add --allow-principal "User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU" --operation READ --group group_id
 ```
-2.5 Пользователю User:kafka_user соответствует точное именование, исходя из полного описания  
+5.5 Пользователю User:kafka_user соответствует точное именование, исходя из полного описания  
 ```
 User:1.2.840.113549.1.9.1=#161a6b61666b615f75736572406f7267616e697a6174696f6e2e7275,CN=kafka_user,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU
 ```
@@ -100,15 +161,11 @@ keyUsage = critical, digitalSignature, keyEncipherment
 extendedKeyUsage = clientAuth
 ```
 
-2.6 Рестартуем приложение kafka-app (чтобы применились настройки), либо весь кластер (уже преднастроенный).  
+5.6 Рестартуем приложение kafka-app (чтобы применились настройки), либо весь кластер (уже преднастроенный).  
 	
-2.7 Просматриваем log-и приложения, producer отправляет сообщения в две темы, consumer принимает (может принять, исходя из настроенных прав) лишь в одной из.  
+5.7 Просматриваем log-и приложения, producer отправляет сообщения в две темы, consumer принимает (может принять, исходя из настроенных прав) лишь в одной из.  
 		(Скриншоты см. в Заключении).  
 
-#### 3. Останавливаем приложение:  
-```
-docker compose down
-```
 
 Далее, более подробно...  
 	
@@ -606,6 +663,8 @@ kafka:
 
 message:
   production-interval: 500  # Интервал (в миллисекундах) между отправкой сообщений в Kafka.
+
+enable-topic2-consumer: false # Запрещаем чтение из topic2 (при разрешении для работы consumer, необходимо дополнительно выдать права на чтение в Kafka ACL)
 ```
 
 2. Убедитесь, что ваше приложение может читать сообщения из topic-1 и только отправлять сообщения в topic-2.  
@@ -649,3 +708,6 @@ bash
 
 ![topics-n-acls.png](images/topics-n-acls.png)
 
+![setup-topics-acls-1.png](images/setup-topics-acls-1.png)
+
+![setup-topics-acls-2.png](images/setup-topics-acls-2.png)

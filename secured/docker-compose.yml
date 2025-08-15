@@ -1,131 +1,103 @@
-version: "3.9"
+x-kafka-ssl-pass: &kafka-ssl-pass
+  KAFKA_CFG_SSL_TRUSTSTORE_PASSWORD: "${KAFKA_SSL_TRUSTSTORE_PASSWORD}"
+  KAFKA_CFG_SSL_KEYSTORE_PASSWORD: "${KAFKA_SSL_KEYSTORE_PASSWORD}"
+  KAFKA_CFG_SSL_KEY_PASSWORD: "${KAFKA_SSL_KEY_PASSWORD}"
 
+x-kafka-env: &kafka-env
+  KAFKA_ENABLE_KRAFT: "yes"
+  KAFKA_CFG_PROCESS_ROLES: "broker,controller"
+  KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+  KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "0@kafka-0:9094,1@kafka-1:9094,2@kafka-2:9094"
+  KAFKA_KRAFT_CLUSTER_ID: "${KAFKA_KRAFT_CLUSTER_ID}"
+  KAFKA_CFG_LISTENERS: "SSL://0.0.0.0:9093,CONTROLLER://0.0.0.0:9094"
+  KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "SSL:SSL,CONTROLLER:SSL"
+  KAFKA_CFG_INTER_BROKER_LISTENER_NAME: "SSL"
+  KAFKA_CFG_SSL_CLIENT_AUTH: "required"
+  KAFKA_CFG_SSL_TRUSTSTORE_LOCATION: "/bitnami/kafka/config/certs/kafka.truststore.jks"
+  KAFKA_CFG_SSL_KEYSTORE_LOCATION: "/bitnami/kafka/config/certs/kafka.keystore.jks"
+  KAFKA_CFG_AUTHORIZER_CLASS_NAME: org.apache.kafka.metadata.authorizer.StandardAuthorizer
+  KAFKA_CFG_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "false"
+  KAFKA_LOG4J_LOGGERS: kafka.authorizer.logger=DEBUG
+  KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
+  KAFKA_CFG_SUPER_USERS: "${KAFKA_SUPER_USERS}"
+  BITNAMI_DEBUG: "true"
+  <<: *kafka-ssl-pass
+
+x-kafka-health: &kafka-health
+  healthcheck:
+    test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9093 --list --command-config /bitnami/kafka/config/certs/client.properties"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 30s
+
+x-kafka-common: &kafka-common
+  image: bitnami/kafka:3.9
+  <<: *kafka-health
+  networks:
+    - kafka_net
+
+x-kafka-setup-env: &kafka-setup-env
+  <<: *kafka-ssl-pass
+  KAFKA_CFG_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS}"
+  KAFKA_CFG_SECURITY_PROTOCOL: "SSL"
+  KAFKA_HEAP_OPTS: "-Xms512M -Xmx2G"
+  KAFKA_CFG_SSL_TRUSTSTORE_LOCATION: "/certs-0/kafka.truststore.jks"
+  KAFKA_CFG_SSL_KEYSTORE_LOCATION: "/certs-0/kafka.keystore.jks" 
+
+x-kafka-depends: &kafka-depends
+  kafka-0:
+    condition: service_healthy
+  kafka-1:
+    condition: service_healthy
+  kafka-2:
+    condition: service_healthy
+  
 services:
   kafka-0:
-    image: bitnami/kafka:3.9
-    hostname: kafka-0
+    <<: *kafka-common
     container_name: kafka-0
+    hostname: kafka-0
     ports:
       - "9093:9093"
       - "9094:9094"
     environment:
-      KAFKA_ENABLE_KRAFT: yes
-      KAFKA_CFG_NODE_ID: 0
-      KAFKA_CFG_PROCESS_ROLES: broker,controller
-      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka-0:9094,1@kafka-1:9094,2@kafka-2:9094
-      KAFKA_KRAFT_CLUSTER_ID: "REPLACE_WITH_CLUSTER_UUID"
-      KAFKA_CFG_LISTENERS: SSL://0.0.0.0:9093,CONTROLLER://0.0.0.0:9094
-      KAFKA_CFG_ADVERTISED_LISTENERS: SSL://kafka-0:9093,CONTROLLER://kafka-0:9094
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: SSL:SSL,CONTROLLER:SSL
-      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: SSL
-      KAFKA_CFG_SSL_CLIENT_AUTH: required
-      KAFKA_CFG_SSL_TRUSTSTORE_LOCATION: /bitnami/kafka/config/certs/kafka.truststore.jks
-      KAFKA_CFG_SSL_TRUSTSTORE_PASSWORD: changeit
-      KAFKA_CFG_SSL_KEYSTORE_LOCATION: /bitnami/kafka/config/certs/kafka.keystore.jks
-      KAFKA_CFG_SSL_KEYSTORE_PASSWORD: changeit
-      KAFKA_CFG_SSL_KEY_PASSWORD: changeit
-      KAFKA_CFG_AUTHORIZER_CLASS_NAME: org.apache.kafka.metadata.authorizer.StandardAuthorizer
-      KAFKA_CFG_ALLOW_EVERYONE_IF_NO_ACL_FOUND: false
-      KAFKA_LOG4J_LOGGERS: kafka.authorizer.logger=DEBUG
-      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
-      KAFKA_CFG_SUPER_USERS: "User:CN=kafka-0,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU;User:CN=kafka-1,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU;User:CN=kafka-2,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU"
-      BITNAMI_DEBUG: true
+      <<: *kafka-env
+      KAFKA_CFG_NODE_ID: "0"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "SSL://kafka-0:9093,CONTROLLER://kafka-0:9094"
     volumes:
       - kafka_0_data:/bitnami/kafka
       - ./kafka-0-creds:/bitnami/kafka/config/certs:ro
-    healthcheck:
-      test: [ "CMD-SHELL", "kafka-topics.sh --bootstrap-server kafka-0:9093 --list --command-config /bitnami/kafka/config/certs/client.properties" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    networks:
-      - kafka_net
 
   kafka-1:
-    image: bitnami/kafka:3.9
-    hostname: kafka-1
+    <<: *kafka-common
     container_name: kafka-1
+    hostname: kafka-1
     ports:
       - "9095:9093"
       - "9096:9094"
     environment:
-      KAFKA_ENABLE_KRAFT: yes
-      KAFKA_CFG_NODE_ID: 1
-      KAFKA_CFG_PROCESS_ROLES: broker,controller
-      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka-0:9094,1@kafka-1:9094,2@kafka-2:9094
-      KAFKA_KRAFT_CLUSTER_ID: "REPLACE_WITH_CLUSTER_UUID"
-      KAFKA_CFG_LISTENERS: SSL://0.0.0.0:9093,CONTROLLER://0.0.0.0:9094
-      KAFKA_CFG_ADVERTISED_LISTENERS: SSL://kafka-1:9093,CONTROLLER://kafka-1:9094
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: SSL:SSL,CONTROLLER:SSL
-      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: SSL
-      KAFKA_CFG_SSL_CLIENT_AUTH: required
-      KAFKA_CFG_SSL_TRUSTSTORE_LOCATION: /bitnami/kafka/config/certs/kafka.truststore.jks
-      KAFKA_CFG_SSL_TRUSTSTORE_PASSWORD: changeit
-      KAFKA_CFG_SSL_KEYSTORE_LOCATION: /bitnami/kafka/config/certs/kafka.keystore.jks
-      KAFKA_CFG_SSL_KEYSTORE_PASSWORD: changeit
-      KAFKA_CFG_SSL_KEY_PASSWORD: changeit
-      KAFKA_CFG_AUTHORIZER_CLASS_NAME: org.apache.kafka.metadata.authorizer.StandardAuthorizer
-      KAFKA_CFG_ALLOW_EVERYONE_IF_NO_ACL_FOUND: false
-      KAFKA_LOG4J_LOGGERS: kafka.authorizer.logger=DEBUG
-      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
-      KAFKA_CFG_SUPER_USERS: "User:CN=kafka-0,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU;User:CN=kafka-1,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU;User:CN=kafka-2,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU"
-      BITNAMI_DEBUG: true
+      <<: *kafka-env
+      KAFKA_CFG_NODE_ID: "1"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "SSL://kafka-1:9093,CONTROLLER://kafka-1:9094"
     volumes:
       - kafka_1_data:/bitnami/kafka
       - ./kafka-1-creds:/bitnami/kafka/config/certs:ro
-    healthcheck:
-      test: [ "CMD-SHELL", "kafka-topics.sh --bootstrap-server kafka-1:9093 --list --command-config /bitnami/kafka/config/certs/client.properties" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    networks:
-      - kafka_net
 
   kafka-2:
-    image: bitnami/kafka:3.9
-    hostname: kafka-2
+    <<: *kafka-common
     container_name: kafka-2
+    hostname: kafka-2
     ports:
       - "9097:9093"
       - "9098:9094"
     environment:
-      KAFKA_ENABLE_KRAFT: yes
-      KAFKA_CFG_NODE_ID: 2
-      KAFKA_CFG_PROCESS_ROLES: broker,controller
-      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka-0:9094,1@kafka-1:9094,2@kafka-2:9094
-      KAFKA_KRAFT_CLUSTER_ID: "REPLACE_WITH_CLUSTER_UUID"
-      KAFKA_CFG_LISTENERS: SSL://0.0.0.0:9093,CONTROLLER://0.0.0.0:9094
-      KAFKA_CFG_ADVERTISED_LISTENERS: SSL://kafka-2:9093,CONTROLLER://kafka-2:9094
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: SSL:SSL,CONTROLLER:SSL
-      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: SSL
-      KAFKA_CFG_SSL_CLIENT_AUTH: required
-      KAFKA_CFG_SSL_TRUSTSTORE_LOCATION: /bitnami/kafka/config/certs/kafka.truststore.jks
-      KAFKA_CFG_SSL_TRUSTSTORE_PASSWORD: changeit
-      KAFKA_CFG_SSL_KEYSTORE_LOCATION: /bitnami/kafka/config/certs/kafka.keystore.jks
-      KAFKA_CFG_SSL_KEYSTORE_PASSWORD: changeit
-      KAFKA_CFG_SSL_KEY_PASSWORD: changeit
-      KAFKA_CFG_AUTHORIZER_CLASS_NAME: org.apache.kafka.metadata.authorizer.StandardAuthorizer
-      KAFKA_CFG_ALLOW_EVERYONE_IF_NO_ACL_FOUND: false
-      KAFKA_LOG4J_LOGGERS: kafka.authorizer.logger=DEBUG
-      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
-      KAFKA_CFG_SUPER_USERS: "User:CN=kafka-0,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU;User:CN=kafka-1,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU;User:CN=kafka-2,L=Locality,OU=OrganizationalUnit,O=Organization,C=RU"
-      BITNAMI_DEBUG: true
+      <<: *kafka-env
+      KAFKA_CFG_NODE_ID: "2"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "SSL://kafka-2:9093,CONTROLLER://kafka-2:9094"
     volumes:
       - kafka_2_data:/bitnami/kafka
       - ./kafka-2-creds:/bitnami/kafka/config/certs:ro
-    healthcheck:
-      test: [ "CMD-SHELL", "kafka-topics.sh --bootstrap-server kafka-2:9093 --list --command-config /bitnami/kafka/config/certs/client.properties" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    networks:
-      - kafka_net
 
   kafka-setup:
     image: bitnami/kafka:3.9
@@ -133,38 +105,23 @@ services:
     working_dir: /setup
     volumes:
       - ./setup:/setup
-      - ./kafka-0-creds:/certs-0:ro
-      - ./kafka-1-creds:/certs-1:ro
-      - ./kafka-2-creds:/certs-2:ro
+      - ./kafka-0-creds:/bitnami/kafka/config/certs:ro
+#      - ./kafka-1-creds:/certs-1:ro
+#      - ./kafka-2-creds:/certs-2:ro
     environment:
-      KAFKA_CFG_BOOTSTRAP_SERVERS: "kafka-0:9093,kafka-1:9093,kafka-2:9093"
-      KAFKA_HEAP_OPTS: "-Xms512M -Xmx2G"
-      KAFKA_CFG_SECURITY_PROTOCOL: "SSL"
-      KAFKA_CFG_SSL_TRUSTSTORE_LOCATION: "/certs-0/kafka.truststore.jks"
-      KAFKA_CFG_SSL_TRUSTSTORE_PASSWORD: "changeit"
-      KAFKA_CFG_SSL_KEYSTORE_LOCATION: "/certs-0/kafka.keystore.jks"
-      KAFKA_CFG_SSL_KEYSTORE_PASSWORD: "changeit"
-      KAFKA_CFG_SSL_KEY_PASSWORD: "changeit"
-    command: ["sh", "/setup/create_topic.sh"]
-    depends_on:
-      kafka-0:
-        condition: service_healthy
-      kafka-1:
-        condition: service_healthy
-      kafka-2:
-        condition: service_healthy
+      <<: *kafka-setup-env
+    command: ["sh", "/setup/setup-topics-acls.sh"]
+    restart: "no"
+    depends_on: *kafka-depends
     networks:
       - kafka_net
 
   kafka-app:
     build: .
     environment:
-      - SPRING_PROFILES_ACTIVE=kafka-app
-      - KAFKA_BOOTSTRAP_SERVERS=kafka-0:9093,kafka-1:9093,kafka-2:9093
-    depends_on:
-      - kafka-0
-      - kafka-1
-      - kafka-2
+      SPRING_PROFILES_ACTIVE: "kafka-app"
+      KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS}"
+    depends_on: *kafka-depends
     restart: unless-stopped
     volumes:
       - ./clients-creds:/app/clients-creds:ro

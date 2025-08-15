@@ -11,6 +11,8 @@ public class MessageListener {
     // groupId = "${spring.kafka.consumer.group-id}" - указывает ID группы потребителей. Важно для масштабирования и отказоустойчивости.
 
     // Сообщения из topic-1 будут распределены между всеми потребителями в этой группе.  Значение берется из application.yml (spring.kafka.consumer.group-id = group_id)
+
+    // Слушаем только topic-1 (т.к. консьюмеры должны иметь доступ только к topic-1).
     @KafkaListener(topics = "${kafka.topic1}", groupId = "${spring.kafka.consumer.group-id}")
     public void listenTopic1(String message) {
         // Этот метод вызывается каждый раз, когда в топик topic-1 приходит новое сообщение
@@ -21,13 +23,16 @@ public class MessageListener {
     // topics = "${kafka.topic2}" - указывает, из какого топика читать сообщения. Значение берется из application.yml (kafka.topic2 = topic-2)
     // groupId = "${spring.kafka.consumer.group-id}" - указывает ID группы потребителей.
 
-    // Важно: Согласно заданию, консьюмеры *не* должны иметь доступа к чтению из topic-2.
-    // Однако, этот код позволяет консьюмерам читать из topic-2.  **ЭТО ПРОТИВОРЕЧИТ ТРЕБОВАНИЯМ ЗАДАЧИ.**
-    // Для реализации ограничения доступа необходимо настраивать ACL (Access Control Lists) в Kafka.
-    // Простое удаление этого метода *недостаточно*, т.к. потребители все равно смогут подписаться на этот топик, если у них есть соответствующие права в Kafka.
-    @KafkaListener(topics = "${kafka.topic2}", groupId = "${spring.kafka.consumer.group-id}")
-    public void listenTopic2(String message) {
-        // Этот метод вызывается каждый раз, когда в топик topic-2 приходит новое сообщение
-        System.out.println("Received Message from Topic 2: " + message); // Выводим полученное сообщение в консоль
-    }
+    // ВАЖНО: слушатель для topic-2 удалён, чтобы не нарушать требование «консьюмеры не имеют доступа к чтению topic-2».
+    
+    // Для отладки добавлен код-скелет, включаемый через property (enable-topic2-consumer), для быстрого включения потребителя на topic-2
+
+    // @ConditionalOnProperty(prefix = "kafka", name = "enable-topic2-consumer", havingValue = "true")
+    // @KafkaListener(topics = "${kafka.topic2}", groupId = "${spring.kafka.consumer.group-id}")
+    // public void listenTopic2(String message) {
+    //     System.out.println("Received Message from Topic 2: " + message);
+    // }
+
+    // При включения потребителя topic-2 для работы слушателя необходимо явно разрешать чтение 
+    // (правило READ на topic-2 в Kafka ACL), иначе даже включённый слушатель не будет получать сообщения
 }

@@ -26,3 +26,5 @@ kafka:
 
 message:
   production-interval: 500  # Интервал (в миллисекундах) между отправкой сообщений в Kafka.
+
+enable-topic2-consumer: false # Запрещаем чтение из topic2 (при разрешении для работы consumer, необходимо дополнительно выдать права на чтение в Kafka ACL)
