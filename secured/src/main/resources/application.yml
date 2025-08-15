@@ -1,13 +1,13 @@
 spring:
   kafka:
-    bootstrap-servers: kafka-0:9093,kafka-1:9093,kafka-2:9093  # Список серверов Kafka для подключения.
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}  # Список серверов Kafka для подключения.
     security:
       protocol: "SSL"  # Протокол безопасности для подключения к Kafka (в данном случае SSL).
     ssl:
       key-store-location: file:/app/clients-creds/kafka_user.keystore.jks  # Путь к файлу keystore, содержащему личный ключ клиента.
-      key-store-password: changeit  # Пароль для доступа к keystore.  **ВАЖНО: В production-среде используйте надежный пароль!**
+      key-store-password: ${KAFKA_KEYSTORE_PASSWORD}  # Пароль для доступа к keystore.  **ВАЖНО: В production-среде используйте надежный пароль!**
       trust-store-location: file:/app/clients-creds/kafka_user.truststore.jks  # Путь к файлу truststore, содержащему сертификаты доверенных центров сертификации.
-      trust-store-password: changeit  # Пароль для доступа к truststore.  **ВАЖНО: В production-среде используйте надежный пароль!**
+      trust-store-password: ${KAFKA_TRUSTSTORE_PASSWORD}  # Пароль для доступа к truststore.  **ВАЖНО: В production-среде используйте надежный пароль!**
     consumer:
       group-id: group_id  # ID группы потребителей Kafka. Все потребители с одинаковым group-id будут совместно обрабатывать сообщения из топика.
       auto-offset-reset: earliest  # Что делать, если нет начального смещения в Kafka или если текущее смещение больше не существует на сервере:
