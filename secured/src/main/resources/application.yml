@@ -1,0 +1,30 @@
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}  # Список серверов Kafka для подключения.
+    security:
+      protocol: "SSL"  # Протокол безопасности для подключения к Kafka (в данном случае SSL).
+    ssl:
+      key-store-location: file:/app/clients-creds/kafka_user.keystore.jks  # Путь к файлу keystore, содержащему личный ключ клиента.
+      key-store-password: ${KAFKA_KEYSTORE_PASSWORD}  # Пароль для доступа к keystore.  **ВАЖНО: В production-среде используйте надежный пароль!**
+      trust-store-location: file:/app/clients-creds/kafka_user.truststore.jks  # Путь к файлу truststore, содержащему сертификаты доверенных центров сертификации.
+      trust-store-password: ${KAFKA_TRUSTSTORE_PASSWORD}  # Пароль для доступа к truststore.  **ВАЖНО: В production-среде используйте надежный пароль!**
+    consumer:
+      group-id: group_id  # ID группы потребителей Kafka. Все потребители с одинаковым group-id будут совместно обрабатывать сообщения из топика.
+      auto-offset-reset: earliest  # Что делать, если нет начального смещения в Kafka или если текущее смещение больше не существует на сервере:
+                                 # - earliest: автоматически переходит к самому раннему смещению.
+                                 # - latest: автоматически переходит к самому последнему смещению.
+                                 # - none: выбрасывает исключение для consumer, если смещение не найдено.
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer  # Десериализатор ключа сообщения Kafka (в данном случае строка).
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer  # Десериализатор значения сообщения Kafka (в данном случае строка).
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer  # Сериализатор ключа сообщения Kafka (в данном случае строка).
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer  # Сериализатор значения сообщения Kafka (в данном случае строка).
+
+kafka:
+  topic1: topic-1  # Имя топика Kafka, в который будут отправляться сообщения.
+  topic2: topic-2  # Имя второго топика Kafka.
+
+message:
+  production-interval: 500  # Интервал (в миллисекундах) между отправкой сообщений в Kafka.
+
+enable-topic2-consumer: false # Запрещаем чтение из topic2 (при разрешении для работы consumer, необходимо дополнительно выдать права на чтение в Kafka ACL)
